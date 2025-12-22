@@ -94,20 +94,7 @@ const getTodayBills = async (req, res) => {
   try {
     //const today = new Date().toISOString().split('T')[0];
     const today = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
-
-    console.log('=== DEBUG TODAY BILLS ===');
-    console.log('Server thinks today is:', today);
-    console.log('Server full date:', new Date());
-
-
     const bills = await Bill.find({ dayIdentifier: today }).sort({ createdAt: 1 });
-  
-
-    console.log('Found bills count:', bills.length);
-    console.log('Bills:', bills.map(b => ({ id: b.billId, date: b.dayIdentifier })));
-
-
-
     res.json(bills);
   } catch (err) {
     res.status(500).json({ message: err.message });
