@@ -8,4 +8,14 @@ const login = (req, res) => {
   res.status(401).json({ success: false, message: 'Invalid credentials' });
 };
 
-module.exports = { login };
+const variPass =  (req,res) => {
+  const { password } = req.body;
+  
+  if (password === process.env.LOGIN_PASSWORD) {
+    return res.json({ success: true });
+  }
+  
+  res.status(401).json({ success: false });
+}
+
+module.exports = { login , variPass };
