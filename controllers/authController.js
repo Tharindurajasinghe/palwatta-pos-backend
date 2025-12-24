@@ -8,6 +8,7 @@ const login = (req, res) => {
   res.status(401).json({ success: false, message: 'Invalid credentials' });
 };
 
+//password varify for summary check
 const variPass =  (req,res) => {
   const { password } = req.body;
   

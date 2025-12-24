@@ -141,10 +141,52 @@ const getPast30DaysBills = async (req, res) => {
   }
 };
 
+// Delete bill by billId
+const deleteBill = async (req, res) => {
+  try {
+    const { billId } = req.params;
+    const bill = await Bill.findOne({ billId });
+
+    if (!bill) {
+      return res.status(404).json({ message: 'Bill not found' });
+    }
+
+    // Restore stock
+    for (const item of bill.items) {
+      const product = await Product.findOne({ productId: item.productId });
+      if (product) {
+        product.stock += item.quantity;
+        await product.save();
+      }
+    }
+
+    // Update ActiveDay if today
+    const today = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
+    if (bill.dayIdentifier === today) {
+      const activeDay = await ActiveDay.findOne({ date: today });
+      if (activeDay) {
+        activeDay.currentTotal -= bill.totalAmount;
+        if (activeDay.currentTotal < 0) activeDay.currentTotal = 0;
+        await activeDay.save();
+      }
+    }
+
+    // Delete the bill
+    await bill.deleteOne();
+
+    res.json({ message: 'Bill deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
 module.exports = {
   createBill,
   getTodayBills,
   getBillsByDate,
   getBillById,
-  getPast30DaysBills
+  getPast30DaysBills,
+  deleteBill
 };

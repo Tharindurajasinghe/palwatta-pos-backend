@@ -5,7 +5,8 @@ const {
   getTodayBills,
   getBillsByDate,
   getBillById,
-  getPast30DaysBills
+  getPast30DaysBills,
+  deleteBill
 } = require('../controllers/billController');
 
 // Create new bill
@@ -22,6 +23,8 @@ router.get('/:billId', getBillById);
 
 // Get bills for past 30 days
 router.get('/history/past30days', getPast30DaysBills);
+// Delete Product
+router.delete('/:billId', deleteBill);
 
 router.get('/debug/all-bills', async (req, res) => {
   const Bill = require('../models/Bill');
