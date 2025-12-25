@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const { authenticateToken } = require('../middleware/authMiddleware');
+
 const {
   getNextProductId,
   getAllProducts,
@@ -9,6 +11,8 @@ const {
   updateProduct,
   deleteProduct
 } = require('../controllers/productController');
+
+router.use(authenticateToken);
 
 // Get next available product ID
 router.get('/next-id', getNextProductId);
