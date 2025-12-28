@@ -22,23 +22,29 @@ app.use('/api/bills', require('./routes/bills'));
 app.use('/api/summary', require('./routes/summary'));
 app.use('/api/day', require('./routes/day'));
 
+
+
 // Auto end day at midnight
-cron.schedule('0 0 * * *', async () => {
-  console.log('Running auto day-end at midnight');
+cron.schedule('0 0 * * *', async () => {  // ← 18:30 UTC = 00:00 Sri Lanka time
+  console.log('Running auto day-end at midnight Sri Lanka time');
+  const moment = require('moment-timezone');
   const ActiveDay = require('./models/ActiveDay');
   const Bill = require('./models/Bill');
   const Product = require('./models/Product');
   const DailySummary = require('./models/DailySummary');
   
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().split('T')[0];
+  // Get the day that just ended (in Sri Lanka timezone)
+  const endedDay = moment().tz('Asia/Colombo').subtract(1, 'minute');
+  const endedDayStr = endedDay.format('YYYY-MM-DD');
   
-  const activeDay = await ActiveDay.findOne({ date: yesterdayStr, isActive: true });
+  console.log(`Checking for active day: ${endedDayStr}`);
+  
+  const activeDay = await ActiveDay.findOne({ date: endedDayStr, isActive: true });
   
   if (activeDay) {
+    console.log(`Active day found for ${endedDayStr}, creating summary...`);
     // Calculate day summary
-    const bills = await Bill.find({ dayIdentifier: yesterdayStr });
+    const bills = await Bill.find({ dayIdentifier: endedDayStr });
     const itemsMap = new Map();
     let totalIncome = 0;
     let totalProfit = 0;
@@ -70,7 +76,7 @@ cron.schedule('0 0 * * *', async () => {
     }
 
     await DailySummary.create({
-      date: yesterdayStr,
+      date: endedDayStr,
       items: Array.from(itemsMap.values()),
       totalIncome,
       totalProfit,
@@ -80,9 +86,11 @@ cron.schedule('0 0 * * *', async () => {
     activeDay.isActive = false;
     await activeDay.save();
     
-    console.log(`Auto day-end completed for ${yesterdayStr}`);
+    console.log(`Auto day-end completed for ${endedDayStr}`);
   }
-});
+  
+}, { timezone: "Asia/Colombo" }
+);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
