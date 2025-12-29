@@ -2,6 +2,8 @@ const DailySummary = require('../models/DailySummary');
 const MonthlySummary = require('../models/MonthlySummary');
 const Bill = require('../models/Bill');
 const Product = require('../models/Product');
+const moment = require('moment-timezone');
+
 
 // Get daily summary by date
 const getDailySummary = async (req, res) => {
@@ -19,13 +21,16 @@ const getDailySummary = async (req, res) => {
 // Create monthly summary
 const createMonthlySummary = async (req, res) => {
   try {
-    const today = new Date();
-    const past30Days = new Date(today);
-    past30Days.setDate(past30Days.getDate() - 29);
+    const today = moment().tz('Asia/Colombo');
+    const past30Days = moment(today).subtract(29, 'days');
+    
     
     // Get all bills from past 30 days
     const bills = await Bill.find({
-      date: { $gte: past30Days, $lte: today }
+      date: { 
+        $gte: past30Days.startOf('day').toDate(),
+         $lte: today.endOf('day').toDate()
+        }
     });
     
     if (bills.length === 0) {
@@ -62,8 +67,8 @@ const createMonthlySummary = async (req, res) => {
       }
     }
 
-    const month = today.toISOString().slice(0, 7); // YYYY-MM
-    const monthName = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const month = today.format('YYYY-MM'); // YYYY-MM
+    const monthName = today.format('MMMM YYYY');
     
     // Create or update monthly summary
     let monthlySummary = await MonthlySummary.findOne({ month });
@@ -72,10 +77,12 @@ const createMonthlySummary = async (req, res) => {
       monthlySummary.items = Array.from(itemsMap.values());
       monthlySummary.totalIncome = totalIncome;
       monthlySummary.totalProfit = totalProfit;
-      monthlySummary.startDate = past30Days.toISOString().split('T')[0];
-      monthlySummary.endDate = today.toISOString().split('T')[0];
+      monthlySummary.startDate = past30Days.format('YYYY-MM-DD');
+      monthlySummary.endDate = today.format('YYYY-MM-DD');
       monthlySummary.daysIncluded = bills.length > 0 ? 
-        Math.ceil((today - new Date(bills[0].date)) / (1000 * 60 * 60 * 24)) + 1 : 0;
+      today.diff(moment(bills[0].date), 'days') + 1
+  : 0;
+       // Math.ceil((today - new Date(bills[0].date)) / (1000 * 60 * 60 * 24)) + 1 : 0;
     } else {
       monthlySummary = new MonthlySummary({
         month,
@@ -83,10 +90,12 @@ const createMonthlySummary = async (req, res) => {
         items: Array.from(itemsMap.values()),
         totalIncome,
         totalProfit,
-        startDate: past30Days.toISOString().split('T')[0],
-        endDate: today.toISOString().split('T')[0],
+        startDate: past30Days.format('YYYY-MM-DD'),
+        endDate: today.format('YYYY-MM-DD'),
         daysIncluded: bills.length > 0 ? 
-          Math.ceil((today - new Date(bills[0].date)) / (1000 * 60 * 60 * 24)) + 1 : 0
+        today.diff(moment(bills[0].date), 'days') + 1
+  : 0
+         // Math.ceil((today - new Date(bills[0].date)) / (1000 * 60 * 60 * 24)) + 1 : 0
       });
     }
     
@@ -133,28 +142,23 @@ const getAllMonthlySummaries = async (req, res) => {
 // Get available dates for past 30 days (for check bill page)
 const getAvailableDates = async (req, res) => {
   try {
-    const today = new Date();
+    const today = moment().tz('Asia/Colombo');
     const dates = [];
     
     // Add today
     dates.push({
-      date: today.toISOString().split('T')[0],
+      date: today.format('YYYY-MM-DD'),
       label: 'Today'
     });
     
     // Add past 29 days
     for (let i = 1; i <= 29; i++) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      dates.push({
-        date: date.toISOString().split('T')[0],
-        label: date.toLocaleDateString('en-US', { 
-          month: 'short', 
-          day: 'numeric',
-          year: 'numeric'
-        })
-      });
-    }
+  const d = moment(today).subtract(i, 'days');
+  dates.push({
+    date: d.format('YYYY-MM-DD'),
+    label: d.format('MMM D, YYYY')
+  });
+}
     
     res.json(dates);
   } catch (err) {
