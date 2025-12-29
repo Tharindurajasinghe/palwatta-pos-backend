@@ -12,6 +12,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.get('/api/ping', (req, res) => {
+  res.status(200).send('OK');
+});
+
+
 // Connect to MongoDB
 connectDB();
 
