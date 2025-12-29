@@ -41,7 +41,7 @@ const getCurrentDaySummary = async (req, res) => {
 // End day and create summary
 const endDay = async (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
     const bills = await Bill.find({ dayIdentifier: today });
     
     const itemsMap = new Map();
@@ -79,7 +79,7 @@ const endDay = async (req, res) => {
       items: Array.from(itemsMap.values()),
       totalIncome,
       totalProfit,
-      endedAt: new Date()
+      endedAt: moment().tz('Asia/Colombo').toDate()
     });
 
     // Mark day as ended
