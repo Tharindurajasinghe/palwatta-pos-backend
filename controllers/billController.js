@@ -12,12 +12,10 @@ async function generateBillId() {
   return nextId.toString();
 }
 
-// Create new bill
 const createBill = async (req, res) => {
   try {
     const { items } = req.body;
     
-    // Validate and calculate
     let totalAmount = 0;
     const billItems = [];
     
@@ -44,38 +42,32 @@ const createBill = async (req, res) => {
         total: itemTotal
       });
       
-      // Update stock
       product.stock -= item.quantity;
       await product.save();
     }
     
-    const now = new Date();
+    // Use Sri Lanka timezone for everything
+    const now = moment().tz('Asia/Colombo');
     const billId = await generateBillId();
-    const dayIdentifier = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
-    //const dayIdentifier = now.toISOString().split('T')[0];
-    const time = now.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true 
-    });
+    const dayIdentifier = now.format('YYYY-MM-DD');
+    const time = now.format('hh:mm A');
     
     const bill = new Bill({
       billId,
       items: billItems,
       totalAmount,
-      date: now,
+      date: now.toDate(),
       time,
       dayIdentifier
     });
     
     await bill.save();
     
-    // Update active day
     let activeDay = await ActiveDay.findOne({ date: dayIdentifier });
     if (!activeDay) {
       activeDay = new ActiveDay({
         date: dayIdentifier,
-        startedAt: now,
+        startedAt: now.toDate(),
         currentTotal: totalAmount
       });
     } else {
