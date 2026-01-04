@@ -14,7 +14,7 @@ async function generateBillId() {
 
 const createBill = async (req, res) => {
   try {
-    const { items } = req.body;
+    const { items , cash} = req.body;
     
     let totalAmount = 0;
     const billItems = [];
@@ -45,6 +45,12 @@ const createBill = async (req, res) => {
       product.stock -= item.quantity;
       await product.save();
     }
+    if (cash < totalAmount) {
+      return res.status(400).json({ message: 'Insufficient cash' });
+    }
+
+    const change = cash - totalAmount;
+
     
     // Use Sri Lanka timezone for everything
     const now = moment().tz('Asia/Colombo');
@@ -58,6 +64,8 @@ const createBill = async (req, res) => {
       totalAmount,
       date: now.toDate(),
       time,
+      cash,
+      change,
       dayIdentifier
     });
     

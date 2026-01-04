@@ -28,6 +28,14 @@ const billSchema = new mongoose.Schema({
   dayIdentifier: {
     type: String,
     required: true // Format: YYYY-MM-DD
+  },
+  cash: {
+     type: Number,
+     required : true
+  },
+  change : {
+    type : Number,
+    required : true
   }
 }, { timestamps: true });
 
