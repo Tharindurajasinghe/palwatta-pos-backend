@@ -45,6 +45,9 @@ const createBill = async (req, res) => {
       product.stock -= item.quantity;
       await product.save();
     }
+    if (cash < totalAmount) {
+      return res.status(400).json({ message: 'Insufficient cash' });
+    }
 
     const change = cash - totalAmount;
 
