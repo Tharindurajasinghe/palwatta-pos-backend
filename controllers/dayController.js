@@ -10,7 +10,8 @@ const getCurrentDaySummary = async (req, res) => {
     
     const today = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
     const bills = await Bill.find({ dayIdentifier: today });
-    
+
+    const itemsMap = new Map();
     let totalSales = 0;
     let totalProfit = 0;
     
@@ -22,15 +23,33 @@ const getCurrentDaySummary = async (req, res) => {
         if (product) {
           const profit = (item.price - product.buyingPrice) * item.quantity;
           totalProfit += profit;
+
+          if (itemsMap.has(item.productId)) {
+            const existing = itemsMap.get(item.productId);
+            existing.soldQuantity += item.quantity;
+            existing.totalIncome += item.total;
+            existing.profit += profit;
+          } else {
+            itemsMap.set(item.productId, {
+              productId: item.productId,
+              name: item.name,
+              soldQuantity: item.quantity,
+              totalIncome: item.total,
+              profit
+            });
+          }
         }
       }
     }
+
+    
     
     res.json({
       date: today,
       totalSales,
       totalProfit,
       billCount: bills.length,
+      items: Array.from(itemsMap.values()),
       bills
     });
   } catch (err) {
