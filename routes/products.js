@@ -23,6 +23,9 @@ router.get('/', getAllProducts);
 // Search products by name (case-insensitive)
 router.get('/search', searchProducts);
 
+//get product by category
+router.get('/category/:categoryId', getAllProducts);
+
 // Get product by ID
 router.get('/:id', getProductById);
 

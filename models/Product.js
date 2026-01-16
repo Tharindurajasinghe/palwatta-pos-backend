@@ -26,6 +26,11 @@ const productSchema = new mongoose.Schema({
     type: Number,
     required: true,
     min: 0
+  },
+  categoryId: {                   
+    type: String,
+    required: true,
+    ref: 'Category'
   }
 }, { timestamps: true });
 

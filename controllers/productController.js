@@ -21,7 +21,9 @@ const getNextProductId = async (req, res) => {
 // Get all products
 const getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find().sort({ productId: 1 });
+    const { categoryId } = req.query;
+    const filter = categoryId ? { categoryId } : {};
+    const products = await Product.find(filter).sort({ productId: 1 });
     res.json(products);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -57,22 +59,28 @@ const getProductById = async (req, res) => {
 // Add new product
 const addProduct = async (req, res) => {
   try {
-    const { productId, name, stock, buyingPrice, sellingPrice } = req.body;
+    const { productId, name, categoryId, stock, buyingPrice, sellingPrice } = req.body;
     
-    // Check if product ID already exists
     const existing = await Product.findOne({ productId });
     if (existing) {
       return res.status(400).json({ message: 'Product ID already exists' });
     }
     
-    // Validate product ID format
     if (!/^[0-9]{3}$/.test(productId) || parseInt(productId) < 1 || parseInt(productId) > 999) {
       return res.status(400).json({ message: 'Invalid product ID. Must be between 001-999' });
+    }
+    
+    // Verify category exists
+    const Category = require('../models/Category');
+    const category = await Category.findOne({ categoryId });
+    if (!category) {
+      return res.status(400).json({ message: 'Category not found' });
     }
     
     const product = new Product({
       productId,
       name,
+      categoryId,
       stock,
       buyingPrice,
       sellingPrice
@@ -88,11 +96,20 @@ const addProduct = async (req, res) => {
 // Update product
 const updateProduct = async (req, res) => {
   try {
-    const { name, stock, buyingPrice, sellingPrice } = req.body;
+    const { name, categoryId, stock, buyingPrice, sellingPrice } = req.body;
     
     const product = await Product.findOne({ productId: req.params.id });
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
+    }
+    
+    if (categoryId) {
+      const Category = require('../models/Category');
+      const category = await Category.findOne({ categoryId });
+      if (!category) {
+        return res.status(400).json({ message: 'Category not found' });
+      }
+      product.categoryId = categoryId;
     }
     
     if (name) product.name = name;
@@ -106,6 +123,7 @@ const updateProduct = async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 };
+
 
 // Delete product
 const deleteProduct = async (req, res) => {
