@@ -31,4 +31,14 @@ const verifyPassword = (req, res) => {
   res.status(401).json({ success: false });
 };
 
-module.exports = { login, verifyPassword};
+const verifyPagePassword = (req, res) => {
+  const { password } = req.body;
+  
+  if (password === process.env.PAGE_PASSWORD) {
+    return res.json({ success: true });
+  }
+  
+  res.status(401).json({ success: false });
+};
+
+module.exports = { login, verifyPassword, verifyPagePassword };
