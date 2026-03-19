@@ -30,15 +30,27 @@ const createBill = async (req, res) => {
           message: `Insufficient stock for ${product.name}. Available: ${product.stock}` 
         });
       }
+
+      // Use custom price if provided, otherwise use the product's selling price
+      const sellingPrice = (item.customPrice !== undefined && item.customPrice !== null)
+        ? parseFloat(item.customPrice)
+        : product.sellingPrice;
+
+      // Validate custom price is not below buying price
+      if (sellingPrice < product.buyingPrice) {
+        return res.status(400).json({
+          message: `Price for "${product.name}" (Rs. ${sellingPrice}) cannot be less than buying price (Rs. ${product.buyingPrice})`
+        });
+      }
       
-      const itemTotal = product.sellingPrice * item.quantity;
+      const itemTotal = sellingPrice * item.quantity;
       totalAmount += itemTotal;
       
       billItems.push({
         productId: product.productId,
         name: product.name,
         quantity: item.quantity,
-        price: product.sellingPrice,
+        price: sellingPrice,
         total: itemTotal
       });
       
