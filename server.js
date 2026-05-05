@@ -16,10 +16,6 @@ app.get('/api/ping', (req, res) => {
   res.status(200).send('OK');
 });
 
-
-// Connect to MongoDB
-connectDB();
-
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/products', require('./routes/products'));
@@ -28,28 +24,31 @@ app.use('/api/summary', require('./routes/summary'));
 app.use('/api/day', require('./routes/day'));
 app.use('/api/categories', require('./routes/categories'));
 
+// Connect to MongoDB, then backfill any missing past month summaries
+const { autoCreateMonthSummary, backfillPastMonths } = require('./controllers/summaryController');
 
+connectDB().then(async () => {
+  await backfillPastMonths();
+});
 
-// Auto end day at midnight
-cron.schedule('0 0 * * *', async () => {  // ← 18:30 UTC = 00:00 Sri Lanka time
+// Auto day-end at midnight Sri Lanka time
+cron.schedule('0 0 * * *', async () => {
   console.log('Running auto day-end at midnight Sri Lanka time');
   const moment = require('moment-timezone');
   const ActiveDay = require('./models/ActiveDay');
   const Bill = require('./models/Bill');
   const Product = require('./models/Product');
   const DailySummary = require('./models/DailySummary');
-  
-  // Get the day that just ended (in Sri Lanka timezone)
+
   const endedDay = moment().tz('Asia/Colombo').subtract(1, 'minute');
   const endedDayStr = endedDay.format('YYYY-MM-DD');
-  
+
   console.log(`Checking for active day: ${endedDayStr}`);
-  
+
   const activeDay = await ActiveDay.findOne({ date: endedDayStr, isActive: true });
-  
+
   if (activeDay) {
     console.log(`Active day found for ${endedDayStr}, creating summary...`);
-    // Calculate day summary
     const bills = await Bill.find({ dayIdentifier: endedDayStr });
     const itemsMap = new Map();
     let totalIncome = 0;
@@ -60,7 +59,7 @@ cron.schedule('0 0 * * *', async () => {  // ← 18:30 UTC = 00:00 Sri Lanka tim
         const product = await Product.findOne({ productId: item.productId });
         if (product) {
           const profit = (item.price - product.buyingPrice) * item.quantity;
-          
+
           if (itemsMap.has(item.productId)) {
             const existing = itemsMap.get(item.productId);
             existing.soldQuantity += item.quantity;
@@ -91,12 +90,14 @@ cron.schedule('0 0 * * *', async () => {  // ← 18:30 UTC = 00:00 Sri Lanka tim
 
     activeDay.isActive = false;
     await activeDay.save();
-    
+
     console.log(`Auto day-end completed for ${endedDayStr}`);
   }
-  
-}, { timezone: "Asia/Colombo" }
-);
+
+}, { timezone: 'Asia/Colombo' });
+
+// Auto month-end: 00:02 on the 1st of each month (after day-end cron has run)
+cron.schedule('2 0 1 * *', autoCreateMonthSummary, { timezone: 'Asia/Colombo' });
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

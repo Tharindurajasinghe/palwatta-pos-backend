@@ -51,6 +51,7 @@ const createBill = async (req, res) => {
         name: product.name,
         quantity: item.quantity,
         price: sellingPrice,
+        buyingPrice: product.buyingPrice,
         originalSellingPrice: product.sellingPrice,
         total: itemTotal
       });

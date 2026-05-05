@@ -11,6 +11,7 @@ const billSchema = new mongoose.Schema({
     name: String,
     quantity: Number,
     price: Number,
+    buyingPrice: Number,
     originalSellingPrice: Number,
     total: Number
   }],
