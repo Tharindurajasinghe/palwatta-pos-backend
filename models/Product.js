@@ -31,7 +31,8 @@ const productSchema = new mongoose.Schema({
     type: String,
     required: true,
     ref: 'Category'
-  }
+  },
+  expireDates: { type: [Date], default: [] } 
 }, { timestamps: true });
 
 // Index for case-insensitive name search

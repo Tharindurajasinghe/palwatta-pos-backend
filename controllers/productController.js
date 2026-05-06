@@ -59,7 +59,7 @@ const getProductById = async (req, res) => {
 // Add new product
 const addProduct = async (req, res) => {
   try {
-    const { productId, name, categoryId, stock, buyingPrice, sellingPrice } = req.body;
+    const { productId, name, categoryId, stock, buyingPrice, sellingPrice,expireDates } = req.body;
     
     const existing = await Product.findOne({ productId });
     if (existing) {
@@ -83,7 +83,8 @@ const addProduct = async (req, res) => {
       categoryId,
       stock,
       buyingPrice,
-      sellingPrice
+      sellingPrice,
+      expireDates: expireDates || [] 
     });
     
     const newProduct = await product.save();
@@ -96,7 +97,7 @@ const addProduct = async (req, res) => {
 // Update product
 const updateProduct = async (req, res) => {
   try {
-    const { name, categoryId, stock, buyingPrice, sellingPrice } = req.body;
+    const { name, categoryId, stock, buyingPrice, sellingPrice,expireDates } = req.body;
     
     const product = await Product.findOne({ productId: req.params.id });
     if (!product) {
@@ -116,6 +117,7 @@ const updateProduct = async (req, res) => {
     if (stock !== undefined) product.stock = stock;
     if (buyingPrice !== undefined) product.buyingPrice = buyingPrice;
     if (sellingPrice !== undefined) product.sellingPrice = sellingPrice;
+    if (expireDates !== undefined) product.expireDates = expireDates;
     
     const updatedProduct = await product.save();
     res.json(updatedProduct);
@@ -140,6 +142,50 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+//expire date handle
+const getExpiringProducts = async (req, res) => {
+  try {
+    const today = new Date();
+    // Warning threshold: 30 days from now
+    const warningDate = new Date();
+    warningDate.setDate(warningDate.getDate() + 30);
+
+    const products = await Product.find({
+      expireDates: { $exists: true, $ne: [] }
+    });
+
+    const Category = require('../models/Category');
+    const categories = await Category.find();
+    const catMap = {};
+    categories.forEach(c => { catMap[c.categoryId] = c.name; });
+
+    const alerts = [];
+
+    for (const product of products) {
+      for (const date of product.expireDates) {
+        const expDate = new Date(date);
+        if (expDate <= warningDate) {   // within 30 days (includes already expired)
+          alerts.push({
+            productId:    product.productId,
+            name:         product.name,
+            categoryId:   product.categoryId,
+            categoryName: catMap[product.categoryId] || 'Unknown',
+            expireDate:   expDate,
+            isExpired:    expDate < today
+          });
+        }
+      }
+    }
+
+    // Sort: expired first, then soonest
+    alerts.sort((a, b) => new Date(a.expireDate) - new Date(b.expireDate));
+
+    res.json(alerts);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   getNextProductId,
   getAllProducts,
@@ -147,5 +193,6 @@ module.exports = {
   getProductById,
   addProduct,
   updateProduct,
-  deleteProduct
+  deleteProduct,
+  getExpiringProducts
 };

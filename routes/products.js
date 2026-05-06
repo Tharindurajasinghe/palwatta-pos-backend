@@ -9,7 +9,8 @@ const {
   getProductById,
   addProduct,
   updateProduct,
-  deleteProduct
+  deleteProduct,
+  getExpiringProducts
 } = require('../controllers/productController');
 
 router.use(authenticateToken);
@@ -25,6 +26,9 @@ router.get('/search', searchProducts);
 
 //get product by category
 router.get('/category/:categoryId', getAllProducts);
+
+//get expires dates
+router.get('/expiring', getExpiringProducts);
 
 // Get product by ID
 router.get('/:id', getProductById);
