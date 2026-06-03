@@ -121,7 +121,7 @@ async function backfillPastMonths() {
 // ─── Auto month-end: called by cron on last day of each month at 23:59 ──────
 async function autoCreateMonthSummary() {
   const now = moment.tz(TZ);
-  const ym  = now.format('YYYY-MM');
+  const ym  = now.subtract(1, 'month').format('YYYY-MM');
   console.log(`Auto month-end: creating summary for ${ym}`);
   const data = await buildMonthlySummary(ym);
   if (data) {
