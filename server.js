@@ -24,6 +24,7 @@ app.use('/api/summary', require('./routes/summary'));
 app.use('/api/day', require('./routes/day'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/customers', require('./routes/customers'));
+app.use('/api/orders', require('./routes/orders'));
 
 // Connect to MongoDB, then backfill any missing past month summaries
 const { autoCreateMonthSummary, backfillPastMonths } = require('./controllers/summaryController');
@@ -99,6 +100,17 @@ cron.schedule('0 0 * * *', async () => {
 
 // Auto month-end: 00:02 on the 1st of each month (after day-end cron has run)
 cron.schedule('2 0 1 * *', autoCreateMonthSummary, { timezone: 'Asia/Colombo' });
+
+// NEW: auto-remove completed orders older than 1 day (runs at 00:05 daily)
+const { deleteOldCompletedOrders } = require('./controllers/orderController');
+cron.schedule('5 0 * * *', async () => {
+  console.log('Running completed-order cleanup');
+  try {
+    await deleteOldCompletedOrders();
+  } catch (err) {
+    console.error('Order cleanup error:', err.message);
+  }
+}, { timezone: 'Asia/Colombo' });
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
