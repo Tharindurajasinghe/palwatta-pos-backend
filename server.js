@@ -23,6 +23,7 @@ app.use('/api/bills', require('./routes/bills'));
 app.use('/api/summary', require('./routes/summary'));
 app.use('/api/day', require('./routes/day'));
 app.use('/api/categories', require('./routes/categories'));
+app.use('/api/customers', require('./routes/customers'));
 
 // Connect to MongoDB, then backfill any missing past month summaries
 const { autoCreateMonthSummary, backfillPastMonths } = require('./controllers/summaryController');

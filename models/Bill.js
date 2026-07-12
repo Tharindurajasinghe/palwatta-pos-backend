@@ -38,9 +38,27 @@ const billSchema = new mongoose.Schema({
   change : {
     type : Number,
     required : true
+  },
+  customerId: {
+    type: String,
+    default: null          // null = normal cash bill (all old bills)
+  },
+  customerName: {
+    type: String,
+    default: ''
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['paid', 'pending'],
+    default: 'paid'        // old bills stay 'paid'
+  },
+  paidAmount: {
+    type: Number,
+    default: 0             // how much of a credit bill is settled
   }
 }, { timestamps: true });
 
 billSchema.index({ dayIdentifier: 1, createdAt: -1 });
+billSchema.index({ customerId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Bill', billSchema);

@@ -2,6 +2,8 @@ const Bill = require('../models/Bill');
 const Product = require('../models/Product');
 const ActiveDay = require('../models/ActiveDay');
 const moment = require('moment-timezone');
+const Customer = require('../models/Customer');                                  // NEW
+const { recalcCustomerBalance } = require('./customerController');
 
 // Generate next bill ID
 async function generateBillId() {
@@ -14,8 +16,17 @@ async function generateBillId() {
 
 const createBill = async (req, res) => {
   try {
-    const { items , cash} = req.body;
-    
+    const { items , cash, customerId } = req.body;   // customerId is NEW (optional)
+
+    // ── NEW: if this is a customer (credit) bill, load the customer first ──
+    let customer = null;
+    if (customerId) {
+      customer = await Customer.findOne({ customerId });
+      if (!customer) {
+        return res.status(400).json({ message: 'Customer not found' });
+      }
+    }
+
     let totalAmount = 0;
     const billItems = [];
     
@@ -59,13 +70,36 @@ const createBill = async (req, res) => {
       product.stock -= item.quantity;
       await product.save();
     }
-    if (cash < totalAmount) {
-      return res.status(400).json({ message: 'Insufficient cash' });
+
+    // ── NEW: credit limit check (stock was already deducted above, so restore it if we reject) ──
+    if (customer) {
+      const balanceAfter = customer.pendingBalance + totalAmount;
+      if (balanceAfter > customer.creditLimit) {
+        for (const bi of billItems) {
+          const p = await Product.findOne({ productId: bi.productId });
+          if (p) { p.stock += bi.quantity; await p.save(); }
+        }
+        return res.status(400).json({
+          message: `Credit limit exceeded for ${customer.name}. Limit: Rs. ${customer.creditLimit.toFixed(2)} | Pending: Rs. ${customer.pendingBalance.toFixed(2)} | This bill: Rs. ${totalAmount.toFixed(2)} | Balance after: Rs. ${balanceAfter.toFixed(2)}`
+        });
+      }
     }
 
-    const change = cash - totalAmount;
+    // ── Cash handling: unchanged for normal bills, skipped for customer bills ──
+    let cashPaid = 0;
+    let change = 0;
 
-    
+    if (customer) {
+      cashPaid = 0;      // nothing paid now — it's a loan
+      change = 0;
+    } else {
+      if (cash < totalAmount) {
+        return res.status(400).json({ message: 'Insufficient cash' });
+      }
+      cashPaid = cash;
+      change = cash - totalAmount;
+    }
+
     // Use Sri Lanka timezone for everything
     const now = moment().tz('Asia/Colombo');
     const billId = await generateBillId();
@@ -78,9 +112,14 @@ const createBill = async (req, res) => {
       totalAmount,
       date: now.toDate(),
       time,
-      cash,
+      cash: cashPaid,
       change,
-      dayIdentifier
+      dayIdentifier,
+      // ── NEW ──
+      customerId:    customer ? customer.customerId : null,
+      customerName:  customer ? customer.name : '',
+      paymentStatus: customer ? 'pending' : 'paid',
+      paidAmount:    0
     });
     
     await bill.save();
@@ -96,6 +135,11 @@ const createBill = async (req, res) => {
       activeDay.currentTotal += totalAmount;
     }
     await activeDay.save();
+
+    // ── NEW: update the customer's pending balance ──
+    if (customer) {
+      await recalcCustomerBalance(customer.customerId);
+    }
     
     res.status(201).json(bill);
   } catch (err) {
@@ -187,6 +231,9 @@ const deleteBill = async (req, res) => {
 
     // Delete the bill
     await bill.deleteOne();
+    if (bill.customerId) {
+      await recalcCustomerBalance(bill.customerId);
+    }
 
     res.json({ message: 'Bill deleted successfully' });
   } catch (err) {
