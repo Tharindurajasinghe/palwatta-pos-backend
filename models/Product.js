@@ -32,7 +32,17 @@ const productSchema = new mongoose.Schema({
     required: true,
     ref: 'Category'
   },
-  expireDates: { type: [Date], default: [] } 
+  expireDates: { type: [Date], default: [] },
+
+  stockHistory: {
+    type: [{
+      oldStock: Number,
+      newStock: Number,
+      change: Number,        // newStock - oldStock (can be negative)
+      changedAt: Date
+    }],
+    default: []
+  }
 }, { timestamps: true });
 
 // Index for case-insensitive name search

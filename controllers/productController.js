@@ -146,9 +146,9 @@ const deleteProduct = async (req, res) => {
 const getExpiringProducts = async (req, res) => {
   try {
     const today = new Date();
-    // Warning threshold: 30 days from now
+    // Warning threshold: 7 days from now
     const warningDate = new Date();
-    warningDate.setDate(warningDate.getDate() + 30);
+    warningDate.setDate(warningDate.getDate() + 7);
 
     const products = await Product.find({
       expireDates: { $exists: true, $ne: [] }
