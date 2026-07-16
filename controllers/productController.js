@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const moment = require('moment-timezone');
 
 // Get next available product ID
 const getNextProductId = async (req, res) => {
@@ -114,6 +115,22 @@ const updateProduct = async (req, res) => {
     }
     
     if (name) product.name = name;
+    // NEW: record stock history when the stock value changes
+    if (stock !== undefined && Number(stock) !== Number(product.stock)) {
+      const oldStock = Number(product.stock);
+      const newStock = Number(stock);
+
+      const entry = {
+        oldStock,
+        newStock,
+        change: newStock - oldStock,
+        changedAt: moment().tz('Asia/Colombo').toDate()
+      };
+
+      // newest first, keep only the last 5
+      product.stockHistory = [entry, ...(product.stockHistory || [])].slice(0, 5);
+    }
+
     if (stock !== undefined) product.stock = stock;
     if (buyingPrice !== undefined) product.buyingPrice = buyingPrice;
     if (sellingPrice !== undefined) product.sellingPrice = sellingPrice;
