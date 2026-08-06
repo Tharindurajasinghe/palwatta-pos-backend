@@ -7,6 +7,7 @@ const {
   getAllProducts,
   searchProducts,
   getProductById,
+  getProductByBarcode,
   addProduct,
   updateProduct,
   deleteProduct,
@@ -29,6 +30,9 @@ router.get('/category/:categoryId', getAllProducts);
 
 //get expires dates
 router.get('/expiring', getExpiringProducts);
+
+// NEW: get product by barcode (scanner lookup)
+router.get('/barcode/:code', getProductByBarcode);
 
 // Get product by ID
 router.get('/:id', getProductById);

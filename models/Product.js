@@ -42,10 +42,20 @@ const productSchema = new mongoose.Schema({
       changedAt: Date
     }],
     default: []
+  },
+
+  barcode: {
+    type: String,
+    trim: true,
+    default: undefined     // undefined (not '') so the sparse index allows many blanks
   }
+
+
 }, { timestamps: true });
 
 // Index for case-insensitive name search
 productSchema.index({ name: 'text' });
+// NEW: barcode must be unique, but sparse so products without a barcode don't clash
+productSchema.index({ barcode: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Product', productSchema);

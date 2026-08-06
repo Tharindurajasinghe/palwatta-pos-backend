@@ -44,6 +44,18 @@ const searchProducts = async (req, res) => {
   }
 };
 
+const getProductByBarcode = async (req, res) => {
+  try {
+    const product = await Product.findOne({ barcode: req.params.code });
+    if (!product) {
+      return res.status(404).json({ message: 'No product found for this barcode' });
+    }
+    res.json(product);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // Get product by ID
 const getProductById = async (req, res) => {
   try {
@@ -56,11 +68,9 @@ const getProductById = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
-// Add new product
 const addProduct = async (req, res) => {
   try {
-    const { productId, name, categoryId, stock, buyingPrice, sellingPrice,expireDates } = req.body;
+    const { productId, name, categoryId, stock, buyingPrice, sellingPrice,expireDates, barcode } = req.body;
     
     const existing = await Product.findOne({ productId });
     if (existing) {
@@ -77,6 +87,17 @@ const addProduct = async (req, res) => {
     if (!category) {
       return res.status(400).json({ message: 'Category not found' });
     }
+
+    // NEW: barcode uniqueness check (only if a barcode was entered)
+    const cleanBarcode = (barcode || '').trim();
+    if (cleanBarcode) {
+      const barcodeOwner = await Product.findOne({ barcode: cleanBarcode });
+      if (barcodeOwner) {
+        return res.status(400).json({
+          message: `Barcode already used by "${barcodeOwner.name}" (ID: ${barcodeOwner.productId})`
+        });
+      }
+    }
     
     const product = new Product({
       productId,
@@ -85,7 +106,8 @@ const addProduct = async (req, res) => {
       stock,
       buyingPrice,
       sellingPrice,
-      expireDates: expireDates || [] 
+      expireDates: expireDates || [],
+      barcode: cleanBarcode || undefined   // NEW
     });
     
     const newProduct = await product.save();
@@ -98,13 +120,32 @@ const addProduct = async (req, res) => {
 // Update product
 const updateProduct = async (req, res) => {
   try {
-    const { name, categoryId, stock, buyingPrice, sellingPrice,expireDates } = req.body;
+    const { name, categoryId, stock, buyingPrice, sellingPrice,expireDates,barcode  } = req.body;
     
     const product = await Product.findOne({ productId: req.params.id });
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
-    
+
+     // NEW: barcode uniqueness check (excluding this product itself)
+    if (barcode !== undefined) {
+      const cleanBarcode = (barcode || '').trim();
+      if (cleanBarcode) {
+        const barcodeOwner = await Product.findOne({
+          barcode: cleanBarcode,
+          productId: { $ne: req.params.id }
+        });
+        if (barcodeOwner) {
+          return res.status(400).json({
+            message: `Barcode already used by "${barcodeOwner.name}" (ID: ${barcodeOwner.productId})`
+          });
+        }
+        product.barcode = cleanBarcode;
+      } else {
+        product.barcode = undefined;   // cleared
+      }
+    }
+
     if (categoryId) {
       const Category = require('../models/Category');
       const category = await Category.findOne({ categoryId });
@@ -208,6 +249,7 @@ module.exports = {
   getAllProducts,
   searchProducts,
   getProductById,
+  getProductByBarcode,
   addProduct,
   updateProduct,
   deleteProduct,
