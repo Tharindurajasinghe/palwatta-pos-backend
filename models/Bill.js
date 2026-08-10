@@ -13,7 +13,8 @@ const billSchema = new mongoose.Schema({
     price: Number,
     buyingPrice: Number,
     originalSellingPrice: Number,
-    total: Number
+    total: Number,
+     isWholesale: { type: Boolean, default: false }
   }],
   totalAmount: {
     type: Number,
