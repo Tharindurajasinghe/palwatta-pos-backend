@@ -48,6 +48,10 @@ const productSchema = new mongoose.Schema({
     type: String,
     trim: true,
     default: undefined     // undefined (not '') so the sparse index allows many blanks
+  },
+  wholesalePrice: {
+    type: Number,
+    default: undefined
   }
 
 

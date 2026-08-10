@@ -70,7 +70,7 @@ const getProductById = async (req, res) => {
 };
 const addProduct = async (req, res) => {
   try {
-    const { productId, name, categoryId, stock, buyingPrice, sellingPrice,expireDates, barcode } = req.body;
+    const { productId, name, categoryId, stock, buyingPrice, sellingPrice,expireDates, barcode , wholesalePrice } = req.body;
     
     const existing = await Product.findOne({ productId });
     if (existing) {
@@ -98,6 +98,15 @@ const addProduct = async (req, res) => {
         });
       }
     }
+    let cleanWholesalePrice = undefined;
+    if (wholesalePrice !== undefined && wholesalePrice !== null && wholesalePrice !== '') {
+      cleanWholesalePrice = parseFloat(wholesalePrice);
+      if (isNaN(cleanWholesalePrice) || cleanWholesalePrice <= parseFloat(buyingPrice)) {
+        return res.status(400).json({
+          message: `Whole sale price (Rs. ${cleanWholesalePrice}) must be higher than buying price (Rs. ${buyingPrice})`
+        });
+      }
+    }
     
     const product = new Product({
       productId,
@@ -107,7 +116,8 @@ const addProduct = async (req, res) => {
       buyingPrice,
       sellingPrice,
       expireDates: expireDates || [],
-      barcode: cleanBarcode || undefined   // NEW
+      barcode: cleanBarcode || undefined,  // NEW
+      wholesalePrice: cleanWholesalePrice
     });
     
     const newProduct = await product.save();
@@ -120,7 +130,7 @@ const addProduct = async (req, res) => {
 // Update product
 const updateProduct = async (req, res) => {
   try {
-    const { name, categoryId, stock, buyingPrice, sellingPrice,expireDates,barcode  } = req.body;
+    const { name, categoryId, stock, buyingPrice, sellingPrice,expireDates,barcode,wholesalePrice  } = req.body;
     
     const product = await Product.findOne({ productId: req.params.id });
     if (!product) {
@@ -176,6 +186,20 @@ const updateProduct = async (req, res) => {
     if (buyingPrice !== undefined) product.buyingPrice = buyingPrice;
     if (sellingPrice !== undefined) product.sellingPrice = sellingPrice;
     if (expireDates !== undefined) product.expireDates = expireDates;
+
+    if (wholesalePrice !== undefined) {
+      if (wholesalePrice === '' || wholesalePrice === null) {
+        product.wholesalePrice = undefined;   // cleared by the user
+      } else {
+        const cleanWholesalePrice = parseFloat(wholesalePrice);
+        if (isNaN(cleanWholesalePrice) || cleanWholesalePrice <= product.buyingPrice) {
+          return res.status(400).json({
+            message: `Whole sale price (Rs. ${cleanWholesalePrice}) must be higher than buying price (Rs. ${product.buyingPrice})`
+          });
+        }
+        product.wholesalePrice = cleanWholesalePrice;
+      }
+    }
     
     const updatedProduct = await product.save();
     res.json(updatedProduct);
